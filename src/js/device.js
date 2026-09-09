@@ -2671,6 +2671,18 @@ window.mochiViewportForm = function (sig) {
       const now = Date.now();
       if (now - _sdLeaveT < 3000) return;
       if (!window.__collectScreenDiag) return;
+      // v3.30.x 手机交互快路径：普通切页不再无条件执行 collectScreenDiag()。
+      // collectFitInp 内含多次 getComputedStyle/getBoundingClientRect/scrollHeight + env 探针，
+      // 会强制样式/布局刷新；旧版把它同步塞在每次页面跳转前，正好阻塞“点击→下一帧”。
+      // 离开抢拍真正要抓的是键盘停靠残留：先用不触发布局的 inline 状态做 O(1) 门控，
+      // 只有存在残留嫌疑才跑完整采集。周期监视/手动诊断/后台 hide 仍保留原完整能力。
+      if (trig === 'switch') {
+        try {
+          var _qph = document.querySelector('.phone');
+          var _sus = !!(_qph && (_qph.style.height || _qph.style.alignSelf || _qph.style.top));
+          if (!_sus) return;
+        } catch (eQ) { return; }
+      }
       // 只看双端键盘探针，不看 activeElement——#197 族「收键盘不派 blur」时
       // activeElement 仍留在输入框，那正是要抓的残留现场，按焦点守卫必漏
       try { var _k2 = window.__mochiIosKb ? window.__mochiIosKb() : null; if (_k2 && _k2.kbActive) return; } catch (eK3) {}
